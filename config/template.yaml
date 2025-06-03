@@ -19,7 +19,7 @@ use_lr_scheduler: False
 phi_v_prediction: False # FIXME v_prediction is still buggy 
 enable_memory_efficient_attention: True
 enable_vae_slicing: True
-enable_half_precision: False
+enable_half_precision: True     # default: False
 add_background: False
 join_meshes_as_scene: True
 deterministic_vae_encoding: False
