@@ -13,5 +13,7 @@ models/tiny-cuda-nn/
 models/3D-FRONT-ToolBox/
 
 data/3D-FRONT_preprocessed/
+data/
 
 _cache*
+*.pyc

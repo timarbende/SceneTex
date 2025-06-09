@@ -33,6 +33,8 @@ from pytorch3d.io import (
 from pytorch3d.renderer import TexturesUV
 from pytorch3d.ops import interpolate_face_attributes
 
+from typing import Optional
+
 # customized
 import sys
 sys.path.append("./lib")
@@ -80,6 +82,9 @@ class TexturePipeline(nn.Module):
 
         # instances
         self._init_anchors()
+
+        # attention slice
+        self.enable_attention_slice()
 
         if not inference_mode:
             # diffusion
@@ -486,4 +491,18 @@ class TexturePipeline(nn.Module):
                     "train/clip_score": np.mean(clip_scores)
                 })
         
+    def enable_attention_slice(self):
+        module_names, _ = self._get_signature_keys(self)
+        modules = [getattr(self, n, None) for n in module_names]
+        modules = [m for m in modules if isinstance(m, torch.nn.Module) and hasattr(m, "set_attention_slice")]
 
+        for module in modules:
+            module.set_attention_slice("auto")
+
+        r'''
+         slice_size (`str` or `int`, *optional*):
+                When `"auto"`, halves the input to the attention heads, so attention will be computed in two steps. If
+                `"max"`, maximum amount of memory will be saved by running only one slice at a time. If a number is
+                provided, uses as many slices as `attention_head_dim // slice_size`. In this case, `attention_head_dim`
+                must be a multiple of `slice_size`.
+        '''
