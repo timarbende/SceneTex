@@ -19,7 +19,7 @@ use_lr_scheduler: False
 phi_v_prediction: False # FIXME v_prediction is still buggy 
 enable_memory_efficient_attention: True
 enable_vae_slicing: True
-enable_half_precision: True     # default: False
+enable_half_precision: False
 add_background: False
 join_meshes_as_scene: True
 deterministic_vae_encoding: False
@@ -36,7 +36,7 @@ show_rgb_gt: False
 
 phi_type: lora # lora / simple_unet
 loss_type: vsd # vsd / sds / l2
-diffusion_type: d2i_controlnet # t2i / d2i / d2i_controlnet
+diffusion_type: d2i # t2i / d2i / d2i_controlnet
 generation_mode: vsd # t2i / vsd 
 t_schedule: anneal # random / t_stages2 / anneal -> need to set num_anneal_steps
 downsample: vae # interpolate / vae -> refer to texture type below

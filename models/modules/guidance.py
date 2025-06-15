@@ -69,6 +69,12 @@ class Guidance(nn.Module):
             print("=> Enable memory efficient attention.")
             diffusion_model.enable_xformers_memory_efficient_attention()
 
+#        diffusion_model.enable_attention_slicing()
+#        print("enable attention slicing")
+
+        diffusion_model.enable_model_cpu_offload()        
+        print("enable cpu offload")
+
         # pretrained diffusion model
         self.tokenizer = diffusion_model.tokenizer
         self.text_encoder = diffusion_model.text_encoder
@@ -252,6 +258,7 @@ class Guidance(nn.Module):
     
     def encode_latent_texture(self, inputs, deterministic=False):
         inputs = inputs.clamp(-1, 1)
+        inputs = inputs.to("cpu")
         
         h = self.vae.encoder(inputs)
         moments = self.vae.quant_conv(h)
