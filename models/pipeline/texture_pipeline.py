@@ -92,6 +92,7 @@ class TexturePipeline(nn.Module):
         if not inference_mode:
             self.log_name = "_".join(self.config.prompt.split(' '))
             self.log_stamp = self.stamp
+            # TODO: add config parameter for selected AoV output
             self.log_dir = os.path.join(self.config.log_dir, self.log_name, self.config.loss_type, self.log_stamp)
 
             # override config
@@ -338,8 +339,11 @@ class TexturePipeline(nn.Module):
 
         return mesh, texture, background_mesh, background_texture
 
-    def forward(self, camera, inference=False, downsample=True, normalize_depth=True, is_direct=False):
+    def forward(self, camera, inference=False, downsample=True, normalize_depth=True):
         renderer = self.studio.set_renderer(camera, self.config.render_size)
+        # up until here the setup is the exact same as in the dummy_render function
+        # except that there I use a SoftPhoneShader and here it uses a custom
+        # FlatTexelShader
 
         mesh, texture, background_mesh, background_texture = self._prepare_mesh(inference)
 
@@ -347,7 +351,7 @@ class TexturePipeline(nn.Module):
 
         # for VSD -> 512x512
         # this is to get more texels involved
-        latents, abs_depth, rel_depth = self.studio.render(renderer, mesh, texture, background_mesh, background_texture, anchors, is_direct)
+        latents, abs_depth, rel_depth = self.studio.render(renderer, mesh, texture, background_mesh, background_texture, anchors)
         latents = latents.permute(0, 3, 1, 2)
 
         if downsample:
@@ -450,9 +454,9 @@ class TexturePipeline(nn.Module):
         output_dir = Path("outputs") / "meshes" / "scene.obj"
         mesh = load_objs_as_meshes([str(output_dir)], device = self.device)
 
+        #TODO: load actual texture
         verts = mesh.verts_packed()
-        verts_rgb = torch.ones_like(verts)[None]  # (1, V, 3), all ones = white
-
+        verts_rgb = torch.ones_like(verts)[None] # all white texture
         mesh.textures = TexturesVertex(verts_features=verts_rgb)
 
         images = renderer(mesh)
@@ -488,10 +492,7 @@ class TexturePipeline(nn.Module):
             cameras = self.studio.set_cameras(Rs, Ts, fovs, self.config.render_size)
 
             # itt rel_depth_normalized helyett kell a conditioning image: kirenderelt árnyékolt textúra
-            latents, _, _, rel_depth_normalized = self.forward(cameras, is_direct=("hashgrid" not in self.config.texture_type))
-            #latents = latents.cpu()
-            #latents = self._parameterize_shit(latents.squeeze())
-            #latents = latents.to("cuda")
+            latents, _, _, rel_depth_normalized = self.forward(cameras)
             t, noise, noisy_latents, _ = self.guidance.prepare_latents(latents, chosen_t, self.config.batch_size)
 
             # compute loss

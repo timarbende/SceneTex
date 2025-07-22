@@ -149,23 +149,7 @@ class Studio(nn.Module):
 
 
     def _init_render_func(self):
-        if self.config.render_func_type == "mlp":
-            if self.config.texture_type == "hashgrid":
-                in_channels = self.config.hashgrid_config.n_levels * self.config.hashgrid_config.n_features_per_level
-            elif self.config.texture_type == "hashgrid_mlp":
-                in_channels = self.config.mlp_config.out_channels
-            else:
-                in_channels = self.config.latent_channels
-
-            render_func = MLP(
-                in_channels,
-                self.config.render_channels,
-                self.config.view_embedding_hidden_dim,
-                self.config.num_view_embedding_layers,
-                dtype=torch.float32
-            ).to(self.device)
-        
-        elif self.config.render_func_type == "none":
+        if self.config.render_func_type == "none":
             render_func = nn.Identity()
 
         else:
@@ -315,26 +299,12 @@ class Studio(nn.Module):
 
         return anchor_features
 
-    def render_features(self, renderer, mesh, texture, is_direct=False, is_background=False, anchors=None):
+    def render_features(self, renderer, mesh, texture, is_background=False, anchors=None):
         # if enable_anchor_embedding is True
         # latents will be the rendered instance map
 
         # latents a kirenderelt optimalizálandó textúra
-        latents, fragments = renderer(mesh) # image: (N, H, W, C)
-
-        if is_direct:
-            features = latents
-        else:
-            uv_coords = self.get_uv_coordinates(mesh, fragments)
-
-            # ez kiadja az árnyékolt képet
-            features = self.query_texture(uv_coords, texture)
-
-            if self.config.enable_anchor_embedding:
-                features = self.query_anchor_features(anchors, texture, features, latents[..., 0], is_background)
-
-        # features csak sima rgb valuek
-        features = self.render_func(features)
+        features, fragments = renderer(mesh) # image: (N, H, W, C)
 
         # ez itt a conditioning image, ezt nem optimalizál
         # nekünk a conditioning a renderelt kép: tartalmazza pl. az árnyékokat
@@ -344,13 +314,13 @@ class Studio(nn.Module):
 
         return features, fragments, absolute_depth, relative_depth # (N, H, W, C)
     
-    def render(self, renderer, mesh, texture, background=None, background_texture=None, anchors=None, is_direct=False):
-        features, fragments, absolute_depth, relative_depth = self.render_features(renderer, mesh, texture, is_direct=is_direct, is_background=False, anchors=anchors)
+    def render(self, renderer, mesh, texture, background=None, background_texture=None, anchors=None):
+        features, fragments, absolute_depth, relative_depth = self.render_features(renderer, mesh, texture, is_background=False, anchors=anchors)
 
         # blend background
         # NOTE there's no need to render background if no views see the background
         if background is not None and -1 in fragments.zbuf:
-            background_features, background_fragments, _, _ = self.render_features(renderer, background, background_texture, is_direct=is_direct, is_background=True, anchors=None)
+            background_features, background_fragments, _, _ = self.render_features(renderer, background, background_texture, is_background=True, anchors=None)
 
             # blend rendering
             background_mask = fragments.zbuf == -1
